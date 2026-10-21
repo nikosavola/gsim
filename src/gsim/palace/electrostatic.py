@@ -156,6 +156,7 @@ class ElectrostaticSim(PalaceSimMixin, BaseModel):
         permittivity: float = 11.45,
         normalization_depth_um: float | None = None,
         minimum_feature_elements: float = 4,
+        edge_transition: float | None = None,
         verbose: bool = False,
         num_threads: int = 1,
     ) -> MeshResult:
@@ -166,6 +167,8 @@ class ElectrostaticSim(PalaceSimMixin, BaseModel):
         cross section: Palace reports total capacitance for that depth. Without
         it, mesh the full 3D sheets. Dimensions are in micrometres. Call
         ``set_geometry`` and ``set_output_dir`` first, then ``write_config``.
+        Set ``edge_transition`` to grade the 3D mesh from every conductor edge,
+        including ground; the value is the grading distance in micrometres.
         Set ``verbose=True`` to show Gmsh progress during long meshes and
         ``num_threads`` to allocate CPU threads to Gmsh.
 
@@ -194,6 +197,7 @@ class ElectrostaticSim(PalaceSimMixin, BaseModel):
             path=self._output_dir / "palace.msh",
             cross_section=normalization_depth_um is not None,
             minimum_feature_elements=minimum_feature_elements,
+            edge_transition=edge_transition,
             verbose=verbose,
             num_threads=num_threads,
         )

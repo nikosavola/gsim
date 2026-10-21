@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import isfinite
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, override
 
@@ -26,6 +27,7 @@ def mesh_sheets(
     path: Path,
     cross_section: bool = False,
     minimum_feature_elements: float = 4,
+    edge_transition: float | None = None,
     verbose: bool = False,
     num_threads: int = 1,
 ) -> MeshResult:
@@ -48,6 +50,8 @@ def mesh_sheets(
         path: Output MSH 2.2 file.
         cross_section: Generate a 2D rather than a 3D mesh.
         minimum_feature_elements: Minimum elements along isolated ground strips.
+        edge_transition: Optional 3D grading distance from every conductor edge,
+            including ground, in micrometres. None retains terminal-surface grading.
         verbose: Show Gmsh progress during mesh generation.
         num_threads: CPU threads available to Gmsh.
 
@@ -65,6 +69,10 @@ def mesh_sheets(
         raise ValueError(
             "Mesh dimensions, feature resolution and thread count must be positive"
         )
+    if edge_transition is not None and (
+        cross_section or not isfinite(edge_transition) or edge_transition <= 1
+    ):
+        raise ValueError("Edge transition must exceed 1 um and requires a 3D mesh")
     if not terminal_ports or "ground" in terminal_ports:
         raise ValueError("Select at least one terminal; 'ground' is reserved")
     footprint = box(*domain_bounds)
@@ -109,6 +117,7 @@ def mesh_sheets(
         far_mesh=far_mesh,
         path=path,
         minimum_feature_elements=minimum_feature_elements,
+        edge_transition=edge_transition,
         verbose=verbose,
         num_threads=num_threads,
     )
@@ -117,6 +126,8 @@ def mesh_sheets(
         terminal_names=tuple(terminal_ports),
         mesh_threads=num_threads,
     )
+    if edge_transition is not None:
+        result.metadata["edge_transition_um"] = edge_transition
     return result
 
 
@@ -129,6 +140,7 @@ def _mesh_sheets(
     far_mesh: float,
     path: Path,
     minimum_feature_elements: float,
+    edge_transition: float | None,
     verbose: bool,
     num_threads: int,
 ) -> MeshResult:
@@ -160,6 +172,7 @@ def _mesh_sheets(
         far_mesh=far_mesh,
         path=path,
         minimum_feature_elements=minimum_feature_elements,
+        edge_transition=edge_transition,
         verbose=verbose,
     )
 
@@ -173,6 +186,7 @@ def _mesh_cross_section(
     far_mesh: float,
     path: Path,
     minimum_feature_elements: float,
+    edge_transition: float | None,
     verbose: bool,
     num_threads: int,
 ) -> MeshResult:
@@ -231,6 +245,7 @@ def _mesh_cross_section(
         far_mesh=far_mesh,
         path=path,
         minimum_feature_elements=minimum_feature_elements,
+        edge_transition=edge_transition,
         verbose=verbose,
     )
 
@@ -245,6 +260,7 @@ def _mesh_entities(
     far_mesh: float,
     path: Path,
     minimum_feature_elements: float,
+    edge_transition: float | None,
     verbose: bool,
 ) -> MeshResult:
     """Keep meshing, physical groups and Palace export consistent across dimensions."""
@@ -269,16 +285,31 @@ def _mesh_entities(
 
     try:
         model.cad.process_entities(entities, interface_delimiter="___")
-        field_type = ThresholdField if dim == 3 else EdgeThresholdField
-        field = field_type(
-            apply_to="surfaces" if dim == 3 else "curves",
-            sizemin=near_mesh,
-            sizemax=far_mesh,
-            distmin=1 if dim == 3 else min(1, 4 * near_mesh),
-            distmax=25,
-        )
+        if edge_transition is not None:
+            field = ThresholdField(
+                apply_to="curves",
+                sizemin=near_mesh,
+                sizemax=far_mesh,
+                distmin=1,
+                distmax=edge_transition,
+                max_sampling=20_000,
+                mass_per_sampling=near_mesh / 2,
+            )
+        else:
+            field_type = ThresholdField if dim == 3 else EdgeThresholdField
+            field = field_type(
+                apply_to="surfaces" if dim == 3 else "curves",
+                sizemin=near_mesh,
+                sizemax=far_mesh,
+                distmin=1 if dim == 3 else min(1, 4 * near_mesh),
+                distmax=25,
+            )
         # Transverse sheet fields are singular at the edges, not along the rails.
-        resolutions = {name: [field] for name in sheets if dim == 2 or name != "ground"}
+        resolutions = {
+            name: [field]
+            for name in (sorted(sheets) if edge_transition is not None else sheets)
+            if dim == 2 or edge_transition is not None or name != "ground"
+        }
         ground_parts = (
             list(sheets["ground"].geoms)
             if "ground" in sheets and hasattr(sheets["ground"], "geoms")

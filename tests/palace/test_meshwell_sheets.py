@@ -224,3 +224,71 @@ def test_invalid_mesh_thread_count(tmp_path: Path, threads: int) -> None:
             far_mesh=5,
             num_threads=threads,
         )
+
+
+def test_three_dimensional_mesh_refines_remote_ground_edges(tmp_path: Path) -> None:
+    gf.gpdk.PDK.activate()
+    component = gf.Component()
+    for bottom, top in [(-25, -12), (-10, -2), (2, 10), (12, 25)]:
+        component.add_polygon(
+            [(0, bottom), (40, bottom), (40, top), (0, top)], layer=(1, 0)
+        )
+    for name, y in [("lower", -6), ("upper", 6)]:
+        component.add_port(
+            name=name,
+            center=(0, y),
+            width=2,
+            orientation=180,
+            layer=(1, 0),
+            port_type="electrical",
+        )
+    edge_nodes = []
+    for transition in (None, 10.0):
+        sim = ElectrostaticSim()
+        sim.set_geometry(component)
+        sim.set_output_dir(tmp_path / str(transition))
+        mesh = sim.mesh_sheets(
+            conductor_layer=(1, 0),
+            terminal_ports={"T1": "lower", "T2": "upper"},
+            domain_bounds=(-10, -50, 50, 50),
+            height=25,
+            near_mesh=0.8,
+            far_mesh=6,
+            edge_transition=transition,
+        )
+        assert sim.validate_mesh().valid
+        assert set(mesh.groups["pec_surfaces"]) == {"T1", "T2", "ground"}
+        assert mesh.metadata.get("edge_transition_um") == transition
+        gmsh.initialize()
+        try:
+            gmsh.open(str(mesh.mesh_path))
+            coordinates = gmsh.model.mesh.getNodes()[1].reshape(-1, 3)
+            edge_nodes.append(
+                sum(abs(y - 25) < 1e-8 and abs(z) < 1e-8 for x, y, z in coordinates)
+            )
+        finally:
+            gmsh.finalize()
+    assert edge_nodes[1] > 2 * edge_nodes[0]
+
+
+@pytest.mark.parametrize(
+    ("transition", "depth"),
+    [(0.0, None), (1.0, None), (float("nan"), None), (float("inf"), None), (10.0, 4.0)],
+)
+def test_invalid_edge_grading(
+    tmp_path: Path, transition: float, depth: float | None
+) -> None:
+    sim = ElectrostaticSim()
+    sim.set_geometry(_component())
+    sim.set_output_dir(tmp_path)
+    with pytest.raises(ValueError, match="Edge transition"):
+        sim.mesh_sheets(
+            conductor_layer=(1, 0),
+            terminal_ports={"T1": "lower", "T2": "upper"},
+            domain_bounds=(0, -25, 4, 25),
+            height=25,
+            near_mesh=0.4,
+            far_mesh=5,
+            edge_transition=transition,
+            normalization_depth_um=depth,
+        )
