@@ -333,3 +333,10 @@ def test_invalid_section_window_preserves_the_previous_settings(tmp_path: Path) 
         sim.set_cross_section("x=1", normalization_depth_um=8, window=(5, 4))
     assert sim.cross_section is original
     assert sim.normalization_depth_um == 4
+
+
+def test_default_transition_end_uses_the_effective_bulk_size(tmp_path: Path) -> None:
+    sim = sheet_sim(tmp_path)
+    sim.mesh_config.refinement_distance_min = 2
+    with pytest.raises(ValueError, match="transition must end"):
+        sim.mesh(refined_mesh_size=0.2, max_mesh_size=1, verbose=False)

@@ -1393,6 +1393,13 @@ def generate_mesh(
         and cross_section is not None
     )
     native_2d = simulation_type == "boundarymode" or electrostatic_section
+    transition_end = (
+        max_mesh_size if refinement_distance_max is None else refinement_distance_max
+    )
+    if not native_2d and transition_end <= refinement_distance_min:
+        raise ValueError(
+            "Refinement transition must end beyond refinement_distance_min"
+        )
 
     msh_path = output_dir / f"{model_name}.msh"
 
