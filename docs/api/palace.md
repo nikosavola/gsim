@@ -268,6 +268,10 @@ The existing Gmsh pipeline supports zero-thickness conductor sheets. Use
 Disconnected electrodes on one layer remain separate nets, and unassigned
 conductors, including a surrounding ground frame with holes, can stay grounded.
 
+Background substrate boxes follow the component footprint. An airbox margin
+expands air only. If the substrate should extend beyond the metal, include its
+outline on a dielectric layer declared in the stack.
+
 For a 3D coupon with a large surrounding domain, control how quickly the mesh
 grows away from conductor edges through `sim.mesh_config`:
 
@@ -275,6 +279,7 @@ grows away from conductor edges through `sim.mesh_config`:
 sim.mesh_config.refinement_distance_max = 100.0  # um
 sim.mesh_config.refinement_distance_min = 1.0  # um
 sim.mesh_config.refinement_sampling = 2000  # samples per curve
+sim.mesh_config.refine_dielectric_bulk = False
 sim.add_terminal("island_a", net="island_a")
 sim.add_terminal("island_b", net="island_b")
 sim.set_unassigned_conductors("ground")
@@ -285,6 +290,25 @@ The distance field follows the conductor edges, including ground edges inside
 the domain. The defaults hold the fine size at the edge and reach the coarse
 size at `max_mesh_size`, using 200 samples per curve. Increase sampling when
 long curves need a fine mesh. These settings do not set an accuracy tolerance.
+
+By default, bulk dielectric spacing is divided by the square root of relative
+permittivity. Set `refine_dielectric_bulk=False` when `max_mesh_size` already
+specifies the intended bulk spacing, as in this static coupon. Conductor-edge
+refinement remains active.
+
+For a uniform line, select an x or y plane before meshing to solve a 2D
+electrostatic cross-section with the same stack and net terminals:
+
+```python
+sim.set_cross_section("x=2", normalization_depth_um=4.0)
+sim.mesh(planar_conductors=True, refined_mesh_size=0.4, max_mesh_size=20.0)
+```
+
+The returned capacitances represent 4 um of uniform line in this example.
+Divide by `4e-6` to obtain F/m. The default depth is 1 um. This approximation
+omits longitudinal end effects. It supports sheet conductors, including sheets
+at different heights, but does not support vias. Optional `window` and `window_z`
+arguments clip the transverse domain, and every selected terminal must intersect it.
 
 An `ElectrostaticSim` terminal selects conductors by connected net, by region or by
 layer. A net is the metal that touches on one layer plus the metal that vias join on

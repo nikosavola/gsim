@@ -1090,6 +1090,7 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
         mesh_config.refinement_distance_max = existing_config.refinement_distance_max
         mesh_config.refinement_distance_min = existing_config.refinement_distance_min
         mesh_config.refinement_sampling = existing_config.refinement_sampling
+        mesh_config.refine_dielectric_bulk = existing_config.refine_dielectric_bulk
         mesh_config.algorithm_3d = existing_config.algorithm_3d
         mesh_config.threads = existing_config.threads
         mesh_config.surface_threads = existing_config.surface_threads
@@ -1640,6 +1641,7 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
             refinement_distance_min=mesh_config.refinement_distance_min,
             refinement_distance_max=mesh_config.refinement_distance_max,
             refinement_sampling=mesh_config.refinement_sampling,
+            refine_dielectric_bulk=mesh_config.refine_dielectric_bulk,
             margin_x=domain_margin_x,
             margin_y=domain_margin_y,
             air_margin=mesh_config.airbox_margin,
@@ -1912,6 +1914,7 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
                 refinement_distance_min=mesh_config.refinement_distance_min,
                 refinement_distance_max=mesh_config.refinement_distance_max,
                 refinement_sampling=mesh_config.refinement_sampling,
+                refine_dielectric_bulk=mesh_config.refine_dielectric_bulk,
                 margin_x=domain_margin_x,
                 margin_y=domain_margin_y,
                 air_margin=mesh_config.airbox_margin,
@@ -2264,8 +2267,12 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
         # The 2D mesh of a cross-section has its own axes; the config
         # generator writes material tensors in them (_to_section_frame).
         cross_section = getattr(self, "cross_section", None)
-        if self.simulation_type == "boundarymode" and cross_section is not None:
+        if cross_section is not None:
             hints["_cross_section_axis"] = cross_section.axis
+            if self.simulation_type == "electrostatic":
+                hints["_characteristic_length_um"] = getattr(
+                    self, "normalization_depth_um", 1.0
+                )
 
         config_path = gen_write_config(
             mesh_result=self._last_mesh_result,

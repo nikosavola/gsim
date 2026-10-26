@@ -30,6 +30,9 @@ class MeshConfig(BaseModel):
             reached, in um. None uses max_mesh_size. Applies to 3D meshes.
         refinement_sampling: Samples per refinement curve for the Gmsh distance
             field. Increase for long curves with small features in 3D meshes.
+        refine_dielectric_bulk: Reduce bulk spacing by the square root of
+            relative permittivity in 3D meshes. Disable when max_mesh_size
+            already specifies the intended bulk spacing for a static coupon.
         merge_via_distance: Vias of one layer closer than this (um) are merged
             into one volume. Merging fills the gaps between the vias, so an
             array of small cuts becomes a solid slab with several times the
@@ -84,6 +87,7 @@ class MeshConfig(BaseModel):
         default=None, gt=0, allow_inf_nan=False
     )
     refinement_sampling: int = Field(default=200, ge=2)
+    refine_dielectric_bulk: bool = True
     merge_via_distance: float = Field(default=2.0, ge=0)
     clip_merged_vias: bool = False
     curve_fit_mode: Literal["line", "spline", "bspline"] = "line"

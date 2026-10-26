@@ -16,6 +16,7 @@ from pydantic import Field, PrivateAttr
 from gsim.palace.base import _PalaceSimBase
 from gsim.palace.capacitance import CapacitanceMatrices, load_capacitance
 from gsim.palace.models import (
+    CrossSectionPlaneConfig,
     ElectrostaticConfig,
     ElectrostaticSolverConfig,
     TerminalConfig,
@@ -75,6 +76,8 @@ class ElectrostaticSim(_PalaceSimBase):
     absorbing_boundary: bool = False
 
     solver: ElectrostaticSolverConfig = Field(default_factory=ElectrostaticSolverConfig)
+    cross_section: CrossSectionPlaneConfig | None = None
+    normalization_depth_um: float = Field(default=1.0, gt=0, allow_inf_nan=False)
 
     # Internal state
     _configured_terminals: bool = PrivateAttr(default=False)
@@ -98,6 +101,43 @@ class ElectrostaticSim(_PalaceSimBase):
     # -------------------------------------------------------------------------
     # Terminal methods
     # -------------------------------------------------------------------------
+
+    def set_cross_section(
+        self,
+        plane: str | CrossSectionPlaneConfig,
+        *,
+        normalization_depth_um: float = 1.0,
+        window: tuple[float, float] | None = None,
+        window_z: tuple[float, float] | None = None,
+    ) -> None:
+        """Extract capacitance from a uniform line's transverse section.
+
+        Conductors must be sheets or meshed with ``planar_conductors=True``.
+        Vias are not supported. The slice has the connectivity of the full
+        layout, so a net can have multiple separate conductor segments.
+
+        Args:
+            plane: Transverse plane as ``"x=<value>"`` or ``"y=<value>"``, in um.
+            normalization_depth_um: Line length represented by the returned
+                capacitances, in um. Divide them by this length in metres to
+                obtain capacitance per metre. The default represents 1 um.
+            window: Optional transverse extent in um.
+            window_z: Optional vertical extent in um.
+        """
+        config = (
+            plane
+            if isinstance(plane, CrossSectionPlaneConfig)
+            else CrossSectionPlaneConfig.from_spec(plane)
+        )
+        if config.axis not in {"x", "y"}:
+            raise ValueError("Electrostatic sections require an x or y plane")
+        self.normalization_depth_um = normalization_depth_um
+        self.cross_section = CrossSectionPlaneConfig(
+            axis=config.axis,
+            value=config.value,
+            window=window if window is not None else config.window,
+            window_z=window_z if window_z is not None else config.window_z,
+        )
 
     def add_terminal(
         self,

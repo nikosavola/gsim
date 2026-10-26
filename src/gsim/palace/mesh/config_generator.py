@@ -466,6 +466,8 @@ def generate_palace_config(
         },
         "Solver": solver_conf,
     }
+    if (depth := (hints or {}).get("_characteristic_length_um")) is not None:
+        cast(dict[str, Any], config["Model"])["Lc"] = depth
 
     # Build domains section
     # Evaluate dispersion models at the problem's target frequency. Driven
@@ -474,7 +476,7 @@ def generate_palace_config(
     # computed with the true frequency-resolved permittivity (e.g. Sellmeier
     # silicon at 1550 nm) rather than the RF constant values.
     stack_materials = stack.materials
-    section_axis: str | None = None
+    section_axis: str | None = (hints or {}).get("_cross_section_axis")
     if driven_config is not None:
         from gsim.palace.materials import resolve_palace_materials_at_frequency
 
