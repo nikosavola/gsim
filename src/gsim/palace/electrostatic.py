@@ -131,13 +131,14 @@ class ElectrostaticSim(_PalaceSimBase):
         )
         if config.axis not in {"x", "y"}:
             raise ValueError("Electrostatic sections require an x or y plane")
-        self.normalization_depth_um = normalization_depth_um
-        self.cross_section = CrossSectionPlaneConfig(
+        section = CrossSectionPlaneConfig(
             axis=config.axis,
             value=config.value,
             window=window if window is not None else config.window,
             window_z=window_z if window_z is not None else config.window_z,
         )
+        self.normalization_depth_um = normalization_depth_um
+        self.cross_section = section
 
     def add_terminal(
         self,

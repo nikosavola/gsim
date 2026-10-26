@@ -323,3 +323,13 @@ def test_section_rejects_an_xy_plane_config_when_meshing(tmp_path: Path) -> None
     sim.cross_section = CrossSectionPlaneConfig(axis="z", value=0)
     with pytest.raises(ValueError, match="only x/y"):
         sim.mesh(verbose=False)
+
+
+def test_invalid_section_window_preserves_the_previous_settings(tmp_path: Path) -> None:
+    sim = sheet_sim(tmp_path)
+    sim.set_cross_section("x=2", normalization_depth_um=4)
+    original = sim.cross_section
+    with pytest.raises(ValidationError):
+        sim.set_cross_section("x=1", normalization_depth_um=8, window=(5, 4))
+    assert sim.cross_section is original
+    assert sim.normalization_depth_um == 4
