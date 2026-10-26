@@ -24,6 +24,12 @@ class MeshConfig(BaseModel):
         fmax: Maximum frequency for mesh sizing (Hz)
         boundary_conditions: List of boundary conditions for each face
         planar_conductors: Treat conductors as 2D PEC surfaces instead of volumes
+        refinement_distance_min: Distance from conductor edges over which the
+            fine mesh size is held, in um. Applies to 3D meshes.
+        refinement_distance_max: Distance at which the coarse mesh size is
+            reached, in um. None uses max_mesh_size. Applies to 3D meshes.
+        refinement_sampling: Samples per refinement curve for the Gmsh distance
+            field. Increase for long curves with small features in 3D meshes.
         merge_via_distance: Vias of one layer closer than this (um) are merged
             into one volume. Merging fills the gaps between the vias, so an
             array of small cuts becomes a solid slab with several times the
@@ -73,6 +79,11 @@ class MeshConfig(BaseModel):
     fmax: float = Field(default=100e9, gt=0)
     boundary_conditions: list[str] | None = None
     planar_conductors: bool = False
+    refinement_distance_min: float = Field(default=0.0, ge=0, allow_inf_nan=False)
+    refinement_distance_max: float | None = Field(
+        default=None, gt=0, allow_inf_nan=False
+    )
+    refinement_sampling: int = Field(default=200, ge=2)
     merge_via_distance: float = Field(default=2.0, ge=0)
     clip_merged_vias: bool = False
     curve_fit_mode: Literal["line", "spline", "bspline"] = "line"
@@ -120,6 +131,16 @@ class MeshConfig(BaseModel):
                     f"size, got {box}."
                 )
         return boxes
+
+    @model_validator(mode="after")
+    def validate_refinement_distances(self) -> Self:
+        """The transition must end beyond the fine-size region."""
+        end = self.refinement_distance_max
+        if end is not None and end <= self.refinement_distance_min:
+            raise ValueError(
+                "refinement_distance_max must exceed refinement_distance_min"
+            )
+        return self
 
     @model_validator(mode="after")
     def set_default_boundary_conditions(self) -> Self:

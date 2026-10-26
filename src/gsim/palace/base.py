@@ -1087,6 +1087,9 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
         mesh_config.high_order_order = existing_config.high_order_order
         mesh_config.high_order_optimize = existing_config.high_order_optimize
         mesh_config.refinement_boxes = list(existing_config.refinement_boxes)
+        mesh_config.refinement_distance_max = existing_config.refinement_distance_max
+        mesh_config.refinement_distance_min = existing_config.refinement_distance_min
+        mesh_config.refinement_sampling = existing_config.refinement_sampling
         mesh_config.algorithm_3d = existing_config.algorithm_3d
         mesh_config.threads = existing_config.threads
         mesh_config.surface_threads = existing_config.surface_threads
@@ -1634,6 +1637,9 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
             model_name=model_name,
             refined_mesh_size=mesh_config.refined_mesh_size,
             max_mesh_size=mesh_config.max_mesh_size,
+            refinement_distance_min=mesh_config.refinement_distance_min,
+            refinement_distance_max=mesh_config.refinement_distance_max,
+            refinement_sampling=mesh_config.refinement_sampling,
             margin_x=domain_margin_x,
             margin_y=domain_margin_y,
             air_margin=mesh_config.airbox_margin,
@@ -1903,6 +1909,9 @@ class PalaceSimMixin(CloudJobMixin, SolverSettingsMixin):
                 output_dir=tmpdir,
                 refined_mesh_size=mesh_config.refined_mesh_size,
                 max_mesh_size=mesh_config.max_mesh_size,
+                refinement_distance_min=mesh_config.refinement_distance_min,
+                refinement_distance_max=mesh_config.refinement_distance_max,
+                refinement_sampling=mesh_config.refinement_sampling,
                 margin_x=domain_margin_x,
                 margin_y=domain_margin_y,
                 air_margin=mesh_config.airbox_margin,

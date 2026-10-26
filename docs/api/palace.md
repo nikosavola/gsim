@@ -263,6 +263,29 @@ argument and frequency-based length estimate are removed. Old mesh results witho
 
 ## Electrostatic terminals
 
+The existing Gmsh pipeline supports zero-thickness conductor sheets. Use
+`sim.mesh(planar_conductors=True)` to flatten finite-thickness conductors too.
+Disconnected electrodes on one layer remain separate nets, and unassigned
+conductors, including a surrounding ground frame with holes, can stay grounded.
+
+For a 3D coupon with a large surrounding domain, control how quickly the mesh
+grows away from conductor edges through `sim.mesh_config`:
+
+```python
+sim.mesh_config.refinement_distance_max = 100.0  # um
+sim.mesh_config.refinement_distance_min = 1.0  # um
+sim.mesh_config.refinement_sampling = 2000  # samples per curve
+sim.add_terminal("island_a", net="island_a")
+sim.add_terminal("island_b", net="island_b")
+sim.set_unassigned_conductors("ground")
+sim.mesh(planar_conductors=True, refined_mesh_size=1.4, max_mesh_size=108.0)
+```
+
+The distance field follows the conductor edges, including ground edges inside
+the domain. The defaults hold the fine size at the edge and reach the coarse
+size at `max_mesh_size`, using 200 samples per curve. Increase sampling when
+long curves need a fine mesh. These settings do not set an accuracy tolerance.
+
 An `ElectrostaticSim` terminal selects conductors by connected net, by region or by
 layer. A net is the metal that touches on one layer plus the metal that vias join on
 other layers, so two electrodes on one layer are two nets (see `sim.nets()`).

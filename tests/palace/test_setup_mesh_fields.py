@@ -31,12 +31,15 @@ def stub_gmsh_utils(monkeypatch):
         # Deterministic: each surface tag N contributes lines [N*10, N*10+1]
         return [tag * 10, tag * 10 + 1]
 
-    def fake_setup_mesh_refinement(boundary_lines, refined_cellsize, max_cellsize):
+    def fake_setup_mesh_refinement(
+        boundary_lines, refined_cellsize, max_cellsize, **kwargs
+    ):
         record["setup_mesh_refinement_calls"].append(
             {
                 "boundary_lines": list(boundary_lines),
                 "refined_cellsize": refined_cellsize,
                 "max_cellsize": max_cellsize,
+                **kwargs,
             }
         )
         return 2  # fake field id, matches the real helper

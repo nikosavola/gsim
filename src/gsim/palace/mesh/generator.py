@@ -837,6 +837,10 @@ def _setup_mesh_fields(
     stack: LayerStack,
     refined_cellsize: float,
     max_cellsize: float,
+    *,
+    refinement_distance_min: float = 0.0,
+    refinement_distance_max: float | None = None,
+    refinement_sampling: int = 200,
 ) -> None:
     """Set up mesh refinement fields.
 
@@ -847,6 +851,9 @@ def _setup_mesh_fields(
         stack: LayerStack with material properties
         refined_cellsize: Fine mesh size near conductors (um)
         max_cellsize: Coarse mesh size in air/dielectric (um)
+        refinement_distance_min: Distance holding the fine mesh size (um).
+        refinement_distance_max: Distance reaching the coarse size (um).
+        refinement_sampling: Distance-field samples per refinement curve.
     """
     boundary_lines: list[int] = []
     conductor_line_count = 0
@@ -1031,7 +1038,12 @@ def _setup_mesh_fields(
     field_ids = []
     if boundary_lines:
         field_id = gmsh_utils.setup_mesh_refinement(
-            boundary_lines, refined_cellsize, max_cellsize
+            boundary_lines,
+            refined_cellsize,
+            max_cellsize,
+            dist_min=refinement_distance_min,
+            dist_max=refinement_distance_max,
+            sampling=refinement_sampling,
         )
         field_ids.append(field_id)
 
@@ -1243,6 +1255,9 @@ def generate_mesh(
     surface_threads: int = 1,
     split_conductors_by_net: bool = False,
     absorbing_order: int = 2,
+    refinement_distance_min: float = 0.0,
+    refinement_distance_max: float | None = None,
+    refinement_sampling: int = 200,
 ) -> MeshResult:
     """Generate mesh for Palace EM simulation.
 
@@ -1254,6 +1269,9 @@ def generate_mesh(
         model_name: Base name for output files
         refined_mesh_size: Mesh size near conductors (um)
         max_mesh_size: Max mesh size in air/dielectric (um)
+        refinement_distance_min: Distance holding the fine mesh size (um), 3D only.
+        refinement_distance_max: Distance reaching the coarse size (um), 3D only.
+        refinement_sampling: Distance-field samples per refinement curve, 3D only.
         margin_x: X-axis margin around design (um)
         margin_y: Y-axis margin around design (um)
         air_margin: Legacy isotropic airbox margin (um)
@@ -1787,6 +1805,9 @@ def generate_mesh(
             stack,
             refined_mesh_size,
             max_mesh_size,
+            refinement_distance_min=refinement_distance_min,
+            refinement_distance_max=refinement_distance_max,
+            refinement_sampling=refinement_sampling,
         )
 
         # Show GUI if requested
